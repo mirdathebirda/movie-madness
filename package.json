@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev -p 1995",
-    "build": "npx next build",
+    "build": "next build",
     "start": "next start",
     "lint": "eslint",
     "scrape": "tsx --env-file=.env.local scripts/scrape.ts"

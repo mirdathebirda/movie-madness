@@ -26,6 +26,8 @@ jobs:
 
       - run: npm ci
 
+      - run: ls node_modules/.bin/next
+
       - name: Build Next.js
         run: npm run build
         env:
