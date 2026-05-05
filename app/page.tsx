@@ -19,8 +19,6 @@ interface Movie {
   providers: Provider[];
 }
 
-const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
-
 const KNOWN_PLATFORMS = [
   { id: 8, name: "Netflix" },
   { id: 9, name: "Amazon Prime Video" },
@@ -51,74 +49,50 @@ const KNOWN_PLATFORMS = [
   { id: 11, name: "MUBI" },
 ];
 
-async function discoverMovie(platformIds: number[]): Promise<Movie | null> {
-  const randomPage = Math.floor(Math.random() * 5) + 1;
-  const params = new URLSearchParams({
-    api_key: TMDB_API_KEY!,
-    with_watch_providers: platformIds.join("|"),
-    watch_region: "US",
-    with_watch_monetization_types: "flatrate",
-    sort_by: "vote_average.desc",
-    "vote_count.gte": "200",
-    page: randomPage.toString(),
-  });
-
-  const res = await fetch(
-    `https://api.themoviedb.org/3/discover/movie?${params}`
-  );
-  const data = await res.json();
-
-  if (!data.results || data.results.length === 0) return null;
-
-  const randomIdx = Math.floor(Math.random() * data.results.length);
-  const picked = data.results[randomIdx];
-
-  const provRes = await fetch(
-    `https://api.themoviedb.org/3/movie/${picked.id}/watch/providers?api_key=${TMDB_API_KEY}`
-  );
-  const provData = await provRes.json();
-  const flatrate = provData.results?.US?.flatrate || [];
-  const providers: Provider[] = flatrate.map((p: { provider_id: number; provider_name: string; logo_path: string }) => ({
-    id: p.provider_id,
-    name: p.provider_name,
-    logoPath: p.logo_path,
-  }));
-
-  return {
-    title: picked.title,
-    year: picked.release_date ? parseInt(picked.release_date.slice(0, 4)) : 0,
-    tmdbId: picked.id,
-    posterPath: picked.poster_path,
-    overview: picked.overview,
-    providers,
-  };
-}
-
 export default function Home() {
   const [currentMovie, setCurrentMovie] = useState<Movie | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [activePlatforms, setActivePlatforms] = useState<number[]>([8, 1899, 15, 11, 258]);
   const [noMatch, setNoMatch] = useState(false);
+  const [movieCount, setMovieCount] = useState<number | null>(null);
 
   const allPlatforms = useMemo(() => {
     return [...KNOWN_PLATFORMS].sort((a, b) => a.name.localeCompare(b.name));
   }, []);
 
   async function spin() {
-    if (activePlatforms.length === 0) return;
+    if (activePlatforms.length === 0) {
+      setNoMatch(true);
+      setCurrentMovie(null);
+      return;
+    }
+
     setSpinning(true);
     setNoMatch(false);
 
-    const movie = await discoverMovie(activePlatforms);
+    try {
+      const res = await fetch("/api/spin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ platforms: activePlatforms }),
+      });
+      const data = await res.json();
 
-    if (movie) {
-      setCurrentMovie(movie);
-    } else {
+      setMovieCount(data.eligibleCount ?? null);
+
+      if (!data.movie) {
+        setNoMatch(true);
+        setCurrentMovie(null);
+      } else {
+        setCurrentMovie(data.movie);
+      }
+    } catch (err) {
+      console.error(err);
       setNoMatch(true);
       setCurrentMovie(null);
+    } finally {
+      setSpinning(false);
     }
-
-    setSpinning(false);
   }
 
   function togglePlatform(id: number) {
@@ -128,45 +102,53 @@ export default function Home() {
   }
 
   return (
-    <div className="flex flex-col items-center justify-center min-h-screen px-4 py-12">
-      <h1 className="text-4xl md:text-5xl font-bold text-[#2E3440] mb-2 tracking-tight">
-        Movie Madness
-      </h1>
-      <p className="text-[#4C566A] mb-8 text-lg font-medium">
-        Select your platforms, then spin
-      </p>
-
-      <PlatformFilter
-        platforms={allPlatforms}
-        active={activePlatforms}
-        onToggle={togglePlatform}
-      />
-
-      <button
-        onClick={spin}
-        disabled={spinning || activePlatforms.length === 0}
-        className="relative mt-8 px-10 py-4 rounded-2xl text-xl font-bold text-white bg-gradient-to-r from-[#81A1C1] via-[#88C0D0] to-[#D08770] animate-gradient animate-pulse-glow transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none"
-      >
-        {spinning ? "Searching..." : "🎬 Spin"}
-      </button>
-
-      {noMatch && !spinning && (
-        <p className="mt-6 text-[#BF616A] font-medium">
-          No match found — try selecting more platforms
+    <div className="flex items-center justify-center h-screen overflow-hidden px-8 gap-12">
+      <div className="flex flex-col items-center">
+        <h1 className="text-4xl md:text-5xl font-bold text-[#2E3440] mb-2 tracking-tight">
+          Movie Madness
+        </h1>
+        <p className="text-[#4C566A] mb-4 text-lg font-medium">
+          Top 500 films neither of us has watched
         </p>
-      )}
 
-      {currentMovie && !spinning && (
-        <div className="mt-10 w-full max-w-md animate-fade-in">
-          <MovieCard movie={currentMovie} />
-        </div>
-      )}
+        <PlatformFilter
+          platforms={allPlatforms}
+          active={activePlatforms}
+          onToggle={togglePlatform}
+        />
 
-      {spinning && (
-        <div className="mt-10 w-full max-w-md flex justify-center">
-          <div className="w-16 h-16 rounded-full border-4 border-[#81A1C1] border-t-[#D08770] animate-spin" />
-        </div>
-      )}
+        <button
+          onClick={spin}
+          disabled={spinning || activePlatforms.length === 0}
+          className="relative mt-6 px-10 py-4 rounded-2xl text-xl font-bold text-white bg-gradient-to-r from-[#81A1C1] via-[#88C0D0] to-[#D08770] animate-gradient animate-pulse-glow transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed disabled:animate-none"
+        >
+          {spinning ? "Searching..." : "🎬 Spin"}
+        </button>
+
+        {movieCount !== null && (
+          <p className="mt-3 text-xs text-[#4C566A]">
+            {movieCount} films available on selected platforms
+          </p>
+        )}
+
+        {noMatch && !spinning && (
+          <p className="mt-2 text-[#BF616A] font-medium">
+            No match found — try selecting more platforms
+          </p>
+        )}
+      </div>
+
+      <div className="w-80 flex items-center justify-center">
+        {currentMovie && !spinning && (
+          <div className="animate-fade-in">
+            <MovieCard movie={currentMovie} />
+          </div>
+        )}
+
+        {spinning && (
+          <div className="w-12 h-12 rounded-full border-4 border-[#81A1C1] border-t-[#D08770] animate-spin" />
+        )}
+      </div>
     </div>
   );
 }

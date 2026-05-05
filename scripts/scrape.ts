@@ -8,6 +8,7 @@ const WATCH_REGION = "US";
 interface Movie {
   title: string;
   year: number;
+  slug: string;
   tmdbId: number;
   posterPath: string | null;
   overview: string;
@@ -176,25 +177,11 @@ async function main() {
   const top500Films = await scrapeTop500Rss();
   console.log(`Found ${top500Films.length} films in Top 500`);
 
-  console.log("Scraping Miranda's watched films (RSS)...");
-  const mirandaWatched = await scrapeWatchedFromRss("mirdathebirda");
-  console.log(`Found ${mirandaWatched.length} films watched by Miranda`);
-
-  console.log("Scraping Elleen's watched films (RSS)...");
-  const elleenWatched = await scrapeWatchedFromRss("elleenpan");
-  console.log(`Found ${elleenWatched.length} films watched by Elleen`);
-
-  const watchedSet = new Set([...mirandaWatched, ...elleenWatched]);
-  const eligibleFilms = top500Films.filter((f) => !watchedSet.has(f.slug));
-  console.log(
-    `${eligibleFilms.length} eligible films after filtering watched lists`
-  );
-
   const movies: Movie[] = [];
 
-  for (let i = 0; i < eligibleFilms.length; i++) {
-    const film = eligibleFilms[i];
-    console.log(`[${i + 1}/${eligibleFilms.length}] Processing: ${film.title} (${film.year})`);
+  for (let i = 0; i < top500Films.length; i++) {
+    const film = top500Films[i];
+    console.log(`[${i + 1}/${top500Films.length}] Processing: ${film.title} (${film.year})`);
 
     const tmdbResult = await searchTmdb(film.title, film.year || undefined);
     if (!tmdbResult) {
@@ -207,6 +194,7 @@ async function main() {
     movies.push({
       title: film.title,
       year: film.year,
+      slug: film.slug,
       tmdbId: tmdbResult.id,
       posterPath: tmdbResult.posterPath,
       overview: tmdbResult.overview,
@@ -220,16 +208,16 @@ async function main() {
     await delay(300);
   }
 
-  console.log(`\nTotal eligible movies: ${movies.length}`);
+  console.log(`\nTotal movies with TMDB data: ${movies.length}`);
 
   const outDir = path.join(process.cwd(), "public");
   fs.mkdirSync(outDir, { recursive: true });
   fs.writeFileSync(
-    path.join(outDir, "eligible-movies.json"),
+    path.join(outDir, "all-movies.json"),
     JSON.stringify(movies, null, 2)
   );
 
-  console.log("Written to public/eligible-movies.json");
+  console.log("Written to public/all-movies.json");
 }
 
 main().catch(console.error);

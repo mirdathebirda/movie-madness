@@ -10,6 +10,7 @@
     "scrape": "tsx --env-file=.env.local scripts/scrape.ts"
   },
   "dependencies": {
+    "cheerio": "^1.2.0",
     "next": "16.2.4",
     "react": "19.2.4",
     "react-dom": "19.2.4"
@@ -19,7 +20,6 @@
     "@types/node": "^20.19.39",
     "@types/react": "^19",
     "@types/react-dom": "^19",
-    "cheerio": "^1.2.0",
     "eslint": "^9",
     "eslint-config-next": "16.2.4",
     "tailwindcss": "^4",
