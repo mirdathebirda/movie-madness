@@ -1,27 +1,49 @@
 @import "tailwindcss";
 
 @theme inline {
-  --color-background: #2E3440;
-  --color-foreground: #ECEFF4;
+  --color-background: #ECEFF4;
+  --color-foreground: #2E3440;
 }
 
 body {
-  background: #2E3440;
-  color: #ECEFF4;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  background: linear-gradient(145deg, #ECEFF4 0%, #E5E9F0 40%, #ECEFF4 70%, #D8DEE9 100%);
+  background-attachment: fixed;
+  color: #2E3440;
+  font-family: "Inter", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  min-height: 100vh;
 }
 
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(10px);
+    transform: translateY(16px) scale(0.97);
   }
   to {
     opacity: 1;
-    transform: translateY(0);
+    transform: translateY(0) scale(1);
   }
 }
 
 .animate-fade-in {
-  animation: fade-in 0.4s ease-out;
+  animation: fade-in 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes gradient-spin {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+.animate-gradient {
+  background-size: 200% 200%;
+  animation: gradient-spin 3s ease infinite;
+}
+
+.animate-pulse-glow {
+  animation: pulse-glow 2.5s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 20px rgba(129, 161, 193, 0.3), 0 0 40px rgba(136, 192, 208, 0.1); }
+  50% { box-shadow: 0 0 30px rgba(208, 135, 112, 0.4), 0 0 60px rgba(136, 192, 208, 0.2); }
 }

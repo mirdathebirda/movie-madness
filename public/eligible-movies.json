@@ -22,5 +22,37 @@
     "posterPath": "/kEy48iCzGnp4s2t0pn7aHftIRQF.jpg",
     "overview": "A domineering rancher responds with mocking cruelty when his brother brings home a new wife and her son, until the unexpected comes to pass.",
     "providers": [{ "id": 8, "name": "Netflix", "logoPath": "/t2yyOv40HZeVlLjYsCsPHnWLk4W.jpg" }]
+  },
+  {
+    "title": "Moonlight",
+    "year": 2016,
+    "tmdbId": 376867,
+    "posterPath": "/4911T5FbJ9eD2Faz5Z8cT3SUhU3.jpg",
+    "overview": "The tender, heartbreaking story of a young man's struggle to find himself, told across three defining chapters in his life as he experiences the ecstasy, pain, and beauty of falling in love, while grappling with his own sexuality.",
+    "providers": [{ "id": 8, "name": "Netflix", "logoPath": "/t2yyOv40HZeVlLjYsCsPHnWLk4W.jpg" }]
+  },
+  {
+    "title": "Portrait of a Lady on Fire",
+    "year": 2019,
+    "tmdbId": 531428,
+    "posterPath": "/2LquGwEhbg3soxCitx3cBR0sPua.jpg",
+    "overview": "On an isolated island in Brittany at the end of the eighteenth century, a female painter is obliged to paint a wedding portrait of a young woman.",
+    "providers": [{ "id": 15, "name": "Hulu", "logoPath": "/gJ3yVMWouaVj6iHd59TISJ1TlM5.jpg" }]
+  },
+  {
+    "title": "The Grand Budapest Hotel",
+    "year": 2014,
+    "tmdbId": 120467,
+    "posterPath": "/eWdyYQreja6JGCzqHWXpWHDrrPo.jpg",
+    "overview": "The adventures of Gustave H, a legendary concierge at a famous European hotel between the wars, and Zero Moustafa, the lobby boy who becomes his most trusted friend.",
+    "providers": [{ "id": 337, "name": "Disney+", "logoPath": "/7rwgEs15tFwyR9NPQ5vpzxTj19Q.jpg" }]
+  },
+  {
+    "title": "Spirited Away",
+    "year": 2001,
+    "tmdbId": 129,
+    "posterPath": "/39wmItIWsg5sZMyRUHLkWBcuVCM.jpg",
+    "overview": "A young girl, Chihiro, becomes trapped in a strange new world of spirits. When her parents undergo a mysterious transformation, she must call upon the courage she never knew she had to free her family.",
+    "providers": [{ "id": 1899, "name": "Max", "logoPath": "/6Q3ZZAI6QCxrAFbMxKhsT0jQo5T.jpg" }]
   }
 ]

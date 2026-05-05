@@ -8,10 +8,21 @@ interface Movie {
 }
 
 const PROVIDER_COLORS: Record<number, string> = {
-  8: "bg-[#BF616A]", // Netflix — red
-  15: "bg-[#88C0D0]", // Hulu — cyan
-  258: "bg-[#8FBCBB]", // Criterion — sea green
+  8: "bg-[#BF616A]",
+  15: "bg-[#A3BE8C]",
+  258: "bg-[#8FBCBB]",
+  337: "bg-[#B48EAD]",
+  1899: "bg-[#D08770]",
+  531: "bg-[#81A1C1]",
+  387: "bg-[#88C0D0]",
+  2: "bg-[#EBCB8B]",
 };
+
+function getProviderColor(id: number): string {
+  if (PROVIDER_COLORS[id]) return PROVIDER_COLORS[id];
+  const colors = ["bg-[#81A1C1]", "bg-[#88C0D0]", "bg-[#8FBCBB]", "bg-[#B48EAD]", "bg-[#D08770]", "bg-[#A3BE8C]"];
+  return colors[id % colors.length];
+}
 
 export default function MovieCard({ movie }: { movie: Movie }) {
   const posterUrl = movie.posterPath
@@ -19,7 +30,7 @@ export default function MovieCard({ movie }: { movie: Movie }) {
     : null;
 
   return (
-    <div className="bg-[#3B4252] rounded-2xl overflow-hidden shadow-xl border border-[#4C566A]">
+    <div className="bg-white/80 backdrop-blur-md rounded-2xl overflow-hidden shadow-xl border border-[#D8DEE9] ring-1 ring-[#81A1C1]/10">
       {posterUrl && (
         <img
           src={posterUrl}
@@ -28,16 +39,16 @@ export default function MovieCard({ movie }: { movie: Movie }) {
         />
       )}
       <div className="p-6">
-        <h2 className="text-2xl font-bold text-[#ECEFF4]">{movie.title}</h2>
-        <p className="text-[#D8DEE9] text-sm mt-1">{movie.year}</p>
-        <p className="text-[#D8DEE9] mt-3 text-sm leading-relaxed line-clamp-4">
+        <h2 className="text-2xl font-bold text-[#2E3440]">{movie.title}</h2>
+        <p className="text-[#81A1C1] text-sm mt-1 font-medium">{movie.year}</p>
+        <p className="text-[#4C566A] mt-3 text-sm leading-relaxed line-clamp-4">
           {movie.overview}
         </p>
         <div className="flex gap-2 mt-4 flex-wrap">
           {movie.providers.map((p) => (
             <span
               key={p.id}
-              className={`${PROVIDER_COLORS[p.id] || "bg-[#4C566A]"} text-[#2E3440] text-xs font-bold px-3 py-1 rounded-full`}
+              className={`${getProviderColor(p.id)} text-white text-xs font-bold px-3 py-1 rounded-full`}
             >
               {p.name}
             </span>

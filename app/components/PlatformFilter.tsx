@@ -1,22 +1,26 @@
+"use client";
+
+import { useState } from "react";
+
 interface Platform {
   id: number;
   name: string;
 }
 
-const PLATFORM_COLORS: Record<number, { active: string; inactive: string }> = {
-  8: {
-    active: "bg-[#BF616A] text-[#2E3440]",
-    inactive: "bg-[#3B4252] text-[#BF616A] border border-[#BF616A]",
-  },
-  15: {
-    active: "bg-[#88C0D0] text-[#2E3440]",
-    inactive: "bg-[#3B4252] text-[#88C0D0] border border-[#88C0D0]",
-  },
-  258: {
-    active: "bg-[#8FBCBB] text-[#2E3440]",
-    inactive: "bg-[#3B4252] text-[#8FBCBB] border border-[#8FBCBB]",
-  },
-};
+const ACCENT_COLORS = [
+  "bg-[#BF616A]",
+  "bg-[#D08770]",
+  "bg-[#EBCB8B]",
+  "bg-[#A3BE8C]",
+  "bg-[#8FBCBB]",
+  "bg-[#88C0D0]",
+  "bg-[#81A1C1]",
+  "bg-[#B48EAD]",
+];
+
+function getColor(index: number): string {
+  return ACCENT_COLORS[index % ACCENT_COLORS.length];
+}
 
 export default function PlatformFilter({
   platforms,
@@ -27,23 +31,45 @@ export default function PlatformFilter({
   active: number[];
   onToggle: (id: number) => void;
 }) {
+  const [search, setSearch] = useState("");
+
+  const filtered = platforms.filter((p) =>
+    p.name.toLowerCase().includes(search.toLowerCase())
+  );
+
   return (
-    <div className="flex gap-3 flex-wrap justify-center">
-      {platforms.map((platform) => {
-        const isActive = active.includes(platform.id);
-        const colors = PLATFORM_COLORS[platform.id];
-        return (
-          <button
-            key={platform.id}
-            onClick={() => onToggle(platform.id)}
-            className={`px-4 py-2 rounded-xl text-sm font-bold transition-all duration-200 ${
-              isActive ? colors.active : colors.inactive
-            }`}
-          >
-            {platform.name}
-          </button>
-        );
-      })}
+    <div className="w-full max-w-md">
+      <input
+        type="text"
+        placeholder="Search platforms..."
+        value={search}
+        onChange={(e) => setSearch(e.target.value)}
+        className="w-full px-4 py-2 rounded-xl bg-white border border-[#D8DEE9] text-[#2E3440] placeholder-[#4C566A]/50 focus:outline-none focus:ring-2 focus:ring-[#81A1C1] mb-3 text-sm"
+      />
+      <div className="flex gap-2 flex-wrap justify-center max-h-40 overflow-y-auto">
+        {filtered.map((platform, i) => {
+          const isActive = active.includes(platform.id);
+          const color = getColor(i);
+          return (
+            <button
+              key={platform.id}
+              onClick={() => onToggle(platform.id)}
+              className={`px-3 py-1.5 rounded-xl text-xs font-bold transition-all duration-200 ${
+                isActive
+                  ? `${color} text-white shadow-sm`
+                  : "bg-white text-[#4C566A] border border-[#D8DEE9] hover:border-[#81A1C1]"
+              }`}
+            >
+              {platform.name}
+            </button>
+          );
+        })}
+      </div>
+      {platforms.length > 0 && (
+        <p className="text-center text-xs text-[#4C566A] mt-2">
+          {active.length} of {platforms.length} selected
+        </p>
+      )}
     </div>
   );
 }
