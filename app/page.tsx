@@ -1,65 +1,100 @@
-import Image from "next/image";
+"use client";
+
+import { useState, useEffect } from "react";
+import MovieCard from "./components/MovieCard";
+import PlatformFilter from "./components/PlatformFilter";
+
+interface Movie {
+  title: string;
+  year: number;
+  tmdbId: number;
+  posterPath: string | null;
+  overview: string;
+  providers: { id: number; name: string; logoPath: string }[];
+}
+
+const ALL_PLATFORMS = [
+  { id: 8, name: "Netflix" },
+  { id: 15, name: "Hulu" },
+  { id: 258, name: "Criterion" },
+];
 
 export default function Home() {
+  const [movies, setMovies] = useState<Movie[]>([]);
+  const [currentMovie, setCurrentMovie] = useState<Movie | null>(null);
+  const [spinning, setSpinning] = useState(false);
+  const [activePlatforms, setActivePlatforms] = useState<number[]>(
+    ALL_PLATFORMS.map((p) => p.id)
+  );
+  const [loaded, setLoaded] = useState(false);
+
+  useEffect(() => {
+    fetch("/eligible-movies.json")
+      .then((res) => res.json())
+      .then((data) => {
+        setMovies(data);
+        setLoaded(true);
+      })
+      .catch(() => setLoaded(true));
+  }, []);
+
+  const filteredMovies = movies.filter((m) =>
+    m.providers.some((p) => activePlatforms.includes(p.id))
+  );
+
+  function spin() {
+    if (filteredMovies.length === 0) return;
+    setSpinning(true);
+
+    setTimeout(() => {
+      const idx = Math.floor(Math.random() * filteredMovies.length);
+      setCurrentMovie(filteredMovies[idx]);
+      setSpinning(false);
+    }, 800);
+  }
+
+  function togglePlatform(id: number) {
+    setActivePlatforms((prev) =>
+      prev.includes(id) ? prev.filter((p) => p !== id) : [...prev, id]
+    );
+  }
+
   return (
-    <div className="flex flex-col flex-1 items-center justify-center bg-zinc-50 font-sans dark:bg-black">
-      <main className="flex flex-1 w-full max-w-3xl flex-col items-center justify-between py-32 px-16 bg-white dark:bg-black sm:items-start">
-        <Image
-          className="dark:invert"
-          src="/next.svg"
-          alt="Next.js logo"
-          width={100}
-          height={20}
-          priority
-        />
-        <div className="flex flex-col items-center gap-6 text-center sm:items-start sm:text-left">
-          <h1 className="max-w-xs text-3xl font-semibold leading-10 tracking-tight text-black dark:text-zinc-50">
-            To get started, edit the page.tsx file.
-          </h1>
-          <p className="max-w-md text-lg leading-8 text-zinc-600 dark:text-zinc-400">
-            Looking for a starting point or more instructions? Head over to{" "}
-            <a
-              href="https://vercel.com/templates?framework=next.js&utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Templates
-            </a>{" "}
-            or the{" "}
-            <a
-              href="https://nextjs.org/learn?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-              className="font-medium text-zinc-950 dark:text-zinc-50"
-            >
-              Learning
-            </a>{" "}
-            center.
-          </p>
+    <div className="flex flex-col items-center justify-center min-h-screen bg-[#2E3440] px-4 py-12">
+      <h1 className="text-4xl md:text-5xl font-bold text-[#ECEFF4] mb-2 tracking-tight">
+        Mirdo Movie Madness
+      </h1>
+      <p className="text-[#D8DEE9] mb-8 text-lg">
+        {loaded
+          ? `${filteredMovies.length} movies waiting to be watched`
+          : "Loading..."}
+      </p>
+
+      <PlatformFilter
+        platforms={ALL_PLATFORMS}
+        active={activePlatforms}
+        onToggle={togglePlatform}
+      />
+
+      <button
+        onClick={spin}
+        disabled={spinning || filteredMovies.length === 0}
+        className="relative mt-8 px-10 py-4 rounded-2xl text-xl font-bold text-[#2E3440] bg-gradient-to-r from-[#81A1C1] via-[#88C0D0] to-[#D08770] transition-all duration-300 hover:scale-105 active:scale-95 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-[#81A1C1]/20"
+      >
+        {spinning ? "Spinning..." : "🎬 Spin"}
+      </button>
+
+      {currentMovie && !spinning && (
+        <div className="mt-10 w-full max-w-md animate-fade-in">
+          <MovieCard movie={currentMovie} />
         </div>
-        <div className="flex flex-col gap-4 text-base font-medium sm:flex-row">
-          <a
-            className="flex h-12 w-full items-center justify-center gap-2 rounded-full bg-foreground px-5 text-background transition-colors hover:bg-[#383838] dark:hover:bg-[#ccc] md:w-[158px]"
-            href="https://vercel.com/new?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            <Image
-              className="dark:invert"
-              src="/vercel.svg"
-              alt="Vercel logomark"
-              width={16}
-              height={16}
-            />
-            Deploy Now
-          </a>
-          <a
-            className="flex h-12 w-full items-center justify-center rounded-full border border-solid border-black/[.08] px-5 transition-colors hover:border-transparent hover:bg-black/[.04] dark:border-white/[.145] dark:hover:bg-[#1a1a1a] md:w-[158px]"
-            href="https://nextjs.org/docs?utm_source=create-next-app&utm_medium=appdir-template-tw&utm_campaign=create-next-app"
-            target="_blank"
-            rel="noopener noreferrer"
-          >
-            Documentation
-          </a>
+      )}
+
+      {spinning && (
+        <div className="mt-10 w-full max-w-md flex justify-center">
+          <div className="w-16 h-16 rounded-full border-4 border-[#81A1C1] border-t-transparent animate-spin" />
         </div>
-      </main>
+      )}
     </div>
   );
 }
