@@ -4,7 +4,6 @@ import * as path from "path";
 
 const TMDB_API_KEY = process.env.TMDB_API_KEY;
 const WATCH_REGION = "US";
-const PROVIDER_IDS = [8, 15, 258]; // Netflix, Hulu, Criterion Channel
 
 interface Movie {
   title: string;
@@ -19,50 +18,103 @@ async function fetchPage(url: string): Promise<string> {
   const res = await fetch(url, {
     headers: {
       "User-Agent":
-        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36",
+        "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36",
+      "Accept": "text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8",
+      "Accept-Language": "en-US,en;q=0.9",
     },
   });
   if (!res.ok) throw new Error(`Failed to fetch ${url}: ${res.status}`);
   return res.text();
 }
 
-async function scrapeLetterboxdList(baseUrl: string): Promise<string[]> {
+async function scrapeWatchedFromRss(username: string): Promise<string[]> {
   const slugs: string[] = [];
   let page = 1;
   let hasMore = true;
 
   while (hasMore) {
-    const url = `${baseUrl}page/${page}/`;
-    const html = await fetchPage(url);
-    const $ = cheerio.load(html);
-    const filmElements = $(".poster-container .film-poster");
-
-    if (filmElements.length === 0) {
+    const url = `https://letterboxd.com/${username}/rss/page/${page}/`;
+    let xml: string;
+    try {
+      xml = await fetchPage(url);
+    } catch {
       hasMore = false;
       break;
     }
 
-    filmElements.each((_, el) => {
-      const slug = $(el).attr("data-film-slug");
-      if (slug) slugs.push(slug);
+    const $ = cheerio.load(xml, { xmlMode: true });
+    const items = $("item");
+
+    if (items.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    items.each((_, el) => {
+      const link = $(el).find("link").text();
+      if (link) {
+        const match = link.match(/letterboxd\.com\/.*\/film\/([^/]+)/);
+        if (match) slugs.push(match[1]);
+      }
     });
 
     page++;
-    await delay(500);
+    await delay(1000);
   }
 
-  return slugs;
+  return [...new Set(slugs)];
 }
 
-async function scrapeWatchedFilms(username: string): Promise<string[]> {
-  const baseUrl = `https://letterboxd.com/${username}/films/`;
-  return scrapeLetterboxdList(baseUrl);
-}
+async function scrapeTop500Rss(): Promise<{ title: string; year: number; slug: string }[]> {
+  const films: { title: string; year: number; slug: string }[] = [];
+  let page = 1;
+  let hasMore = true;
 
-async function scrapeTop500(): Promise<string[]> {
-  const baseUrl =
-    "https://letterboxd.com/official/list/letterboxds-top-500-films/";
-  return scrapeLetterboxdList(baseUrl);
+  while (hasMore) {
+    const url = `https://letterboxd.com/official/list/letterboxds-top-500-films/rss/page/${page}/`;
+    let xml: string;
+    try {
+      xml = await fetchPage(url);
+    } catch {
+      hasMore = false;
+      break;
+    }
+
+    const $ = cheerio.load(xml, { xmlMode: true });
+    const items = $("item");
+
+    if (items.length === 0) {
+      hasMore = false;
+      break;
+    }
+
+    items.each((_, el) => {
+      const titleText = $(el).find("title").text();
+      const link = $(el).find("link").text();
+
+      const titleMatch = titleText.match(/^(.+?)\s*\((\d{4})\)/);
+      const slugMatch = link.match(/\/film\/([^/]+)/);
+
+      if (titleMatch && slugMatch) {
+        films.push({
+          title: titleMatch[1].trim(),
+          year: parseInt(titleMatch[2]),
+          slug: slugMatch[1],
+        });
+      } else if (slugMatch) {
+        films.push({
+          title: titleText.trim(),
+          year: 0,
+          slug: slugMatch[1],
+        });
+      }
+    });
+
+    page++;
+    await delay(1000);
+  }
+
+  return films;
 }
 
 async function searchTmdb(
@@ -103,32 +155,11 @@ async function getWatchProviders(
   if (!regionData) return [];
 
   const flatrate = regionData.flatrate || [];
-  return flatrate
-    .filter((p: { provider_id: number }) => PROVIDER_IDS.includes(p.provider_id))
-    .map((p: { provider_id: number; provider_name: string; logo_path: string }) => ({
-      id: p.provider_id,
-      name: p.provider_name,
-      logoPath: p.logo_path,
-    }));
-}
-
-async function getFilmDetails(
-  slug: string
-): Promise<{ title: string; year: number } | null> {
-  const url = `https://letterboxd.com/film/${slug}/`;
-  const html = await fetchPage(url);
-  const $ = cheerio.load(html);
-
-  const title =
-    $('meta[property="og:title"]').attr("content")?.replace(/\s*\(\d{4}\)$/, "") ||
-    $("h1.headline-1").text().trim();
-  const yearText = $('meta[property="og:title"]')
-    .attr("content")
-    ?.match(/\((\d{4})\)/)?.[1];
-  const year = yearText ? parseInt(yearText) : 0;
-
-  if (!title) return null;
-  return { title, year };
+  return flatrate.map((p: { provider_id: number; provider_name: string; logo_path: string }) => ({
+    id: p.provider_id,
+    name: p.provider_name,
+    logoPath: p.logo_path,
+  }));
 }
 
 function delay(ms: number): Promise<void> {
@@ -141,51 +172,41 @@ async function main() {
     process.exit(1);
   }
 
-  console.log("Scraping Letterboxd Top 500...");
-  const top500Slugs = await scrapeTop500();
-  console.log(`Found ${top500Slugs.length} films in Top 500`);
+  console.log("Scraping Letterboxd Top 500 (RSS)...");
+  const top500Films = await scrapeTop500Rss();
+  console.log(`Found ${top500Films.length} films in Top 500`);
 
-  console.log("Scraping Miranda's watched films...");
-  const mirandaWatched = await scrapeWatchedFilms("mirdathebirda");
+  console.log("Scraping Miranda's watched films (RSS)...");
+  const mirandaWatched = await scrapeWatchedFromRss("mirdathebirda");
   console.log(`Found ${mirandaWatched.length} films watched by Miranda`);
 
-  console.log("Scraping Elleen's watched films...");
-  const elleenWatched = await scrapeWatchedFilms("elleenpan");
+  console.log("Scraping Elleen's watched films (RSS)...");
+  const elleenWatched = await scrapeWatchedFromRss("elleenpan");
   console.log(`Found ${elleenWatched.length} films watched by Elleen`);
 
   const watchedSet = new Set([...mirandaWatched, ...elleenWatched]);
-  const eligibleSlugs = top500Slugs.filter((slug) => !watchedSet.has(slug));
+  const eligibleFilms = top500Films.filter((f) => !watchedSet.has(f.slug));
   console.log(
-    `${eligibleSlugs.length} eligible films after filtering watched lists`
+    `${eligibleFilms.length} eligible films after filtering watched lists`
   );
 
   const movies: Movie[] = [];
 
-  for (let i = 0; i < eligibleSlugs.length; i++) {
-    const slug = eligibleSlugs[i];
-    console.log(`[${i + 1}/${eligibleSlugs.length}] Processing: ${slug}`);
+  for (let i = 0; i < eligibleFilms.length; i++) {
+    const film = eligibleFilms[i];
+    console.log(`[${i + 1}/${eligibleFilms.length}] Processing: ${film.title} (${film.year})`);
 
-    const details = await getFilmDetails(slug);
-    if (!details) {
-      console.log(`  Skipping ${slug} — couldn't get details`);
-      continue;
-    }
-
-    const tmdbResult = await searchTmdb(details.title, details.year);
+    const tmdbResult = await searchTmdb(film.title, film.year || undefined);
     if (!tmdbResult) {
-      console.log(`  Skipping ${slug} — not found on TMDB`);
+      console.log(`  Skipping — not found on TMDB`);
       continue;
     }
 
     const providers = await getWatchProviders(tmdbResult.id);
-    if (providers.length === 0) {
-      console.log(`  Skipping ${slug} — not on any of our platforms`);
-      continue;
-    }
 
     movies.push({
-      title: details.title,
-      year: details.year,
+      title: film.title,
+      year: film.year,
       tmdbId: tmdbResult.id,
       posterPath: tmdbResult.posterPath,
       overview: tmdbResult.overview,
@@ -193,13 +214,13 @@ async function main() {
     });
 
     console.log(
-      `  ✓ ${details.title} (${details.year}) — ${providers.map((p) => p.name).join(", ")}`
+      `  ✓ ${providers.length > 0 ? providers.map((p) => p.name).join(", ") : "no streaming"}`
     );
 
     await delay(300);
   }
 
-  console.log(`\nTotal eligible movies with streaming: ${movies.length}`);
+  console.log(`\nTotal eligible movies: ${movies.length}`);
 
   const outDir = path.join(process.cwd(), "public");
   fs.mkdirSync(outDir, { recursive: true });
