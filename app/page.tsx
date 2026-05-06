@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useMemo } from "react";
+import { useState, useMemo, useEffect } from "react";
 import MovieCard from "./components/MovieCard";
 import PlatformFilter from "./components/PlatformFilter";
 
@@ -18,6 +18,18 @@ interface Movie {
   overview: string;
   providers: Provider[];
 }
+
+interface EligibleFilm {
+  title: string;
+  year: number;
+  tmdbId: number;
+  posterPath: string | null;
+  overview: string;
+}
+
+const TMDB_API_KEY = process.env.NEXT_PUBLIC_TMDB_API_KEY;
+const BASE_PATH = "/movie-madness";
+const MAX_ATTEMPTS = 15;
 
 const KNOWN_PLATFORMS = [
   { id: 8, name: "Netflix" },
@@ -49,19 +61,39 @@ const KNOWN_PLATFORMS = [
   { id: 11, name: "MUBI" },
 ];
 
+async function getProviders(tmdbId: number): Promise<Provider[]> {
+  const res = await fetch(
+    `https://api.themoviedb.org/3/movie/${tmdbId}/watch/providers?api_key=${TMDB_API_KEY}`
+  );
+  const data = await res.json();
+  const flatrate = data.results?.US?.flatrate || [];
+  return flatrate.map((p: { provider_id: number; provider_name: string; logo_path: string }) => ({
+    id: p.provider_id,
+    name: p.provider_name,
+    logoPath: p.logo_path,
+  }));
+}
+
 export default function Home() {
+  const [eligibleFilms, setEligibleFilms] = useState<EligibleFilm[]>([]);
   const [currentMovie, setCurrentMovie] = useState<Movie | null>(null);
   const [spinning, setSpinning] = useState(false);
   const [activePlatforms, setActivePlatforms] = useState<number[]>([8, 1899, 15, 11, 258]);
   const [noMatch, setNoMatch] = useState(false);
-  const [movieCount, setMovieCount] = useState<number | null>(null);
+
+  useEffect(() => {
+    fetch(`${BASE_PATH}/eligible-movies.json`)
+      .then((res) => res.json())
+      .then((data: EligibleFilm[]) => setEligibleFilms(data))
+      .catch(console.error);
+  }, []);
 
   const allPlatforms = useMemo(() => {
     return [...KNOWN_PLATFORMS].sort((a, b) => a.name.localeCompare(b.name));
   }, []);
 
   async function spin() {
-    if (activePlatforms.length === 0) {
+    if (activePlatforms.length === 0 || eligibleFilms.length === 0) {
       setNoMatch(true);
       setCurrentMovie(null);
       return;
@@ -70,29 +102,23 @@ export default function Home() {
     setSpinning(true);
     setNoMatch(false);
 
-    try {
-      const res = await fetch("/api/spin", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ platforms: activePlatforms }),
-      });
-      const data = await res.json();
+    const shuffled = [...eligibleFilms].sort(() => Math.random() - 0.5);
 
-      setMovieCount(data.eligibleCount ?? null);
+    for (let i = 0; i < Math.min(shuffled.length, MAX_ATTEMPTS); i++) {
+      const film = shuffled[i];
+      const providers = await getProviders(film.tmdbId);
+      const matches = providers.some((p) => activePlatforms.includes(p.id));
 
-      if (!data.movie) {
-        setNoMatch(true);
-        setCurrentMovie(null);
-      } else {
-        setCurrentMovie(data.movie);
+      if (matches) {
+        setCurrentMovie({ ...film, providers });
+        setSpinning(false);
+        return;
       }
-    } catch (err) {
-      console.error(err);
-      setNoMatch(true);
-      setCurrentMovie(null);
-    } finally {
-      setSpinning(false);
     }
+
+    setNoMatch(true);
+    setCurrentMovie(null);
+    setSpinning(false);
   }
 
   function togglePlatform(id: number) {
@@ -125,11 +151,9 @@ export default function Home() {
           {spinning ? "Searching..." : "🎬 Spin"}
         </button>
 
-        {movieCount !== null && (
-          <p className="mt-3 text-xs text-[#4C566A]">
-            {movieCount} films available on selected platforms
-          </p>
-        )}
+        <p className="mt-3 text-xs text-[#4C566A]">
+          {eligibleFilms.length} films in pool
+        </p>
 
         {noMatch && !spinning && (
           <p className="mt-2 text-[#BF616A] font-medium">
