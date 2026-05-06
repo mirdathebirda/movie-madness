@@ -33,7 +33,6 @@ const MAX_ATTEMPTS = 15;
 
 const KNOWN_PLATFORMS = [
   { id: 8, name: "Netflix" },
-  { id: 9, name: "Amazon Prime Video" },
   { id: 15, name: "Hulu" },
   { id: 337, name: "Disney+" },
   { id: 1899, name: "Max" },
@@ -48,7 +47,6 @@ const KNOWN_PLATFORMS = [
   { id: 300, name: "Pluto TV" },
   { id: 257, name: "fuboTV" },
   { id: 215, name: "Hoopla" },
-  { id: 10, name: "Amazon Video" },
   { id: 192, name: "YouTube" },
   { id: 188, name: "YouTube Premium" },
   { id: 283, name: "Crunchyroll" },
